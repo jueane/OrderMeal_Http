@@ -1,43 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OrderMeal
 {
     public class ConfigData
     {
-        public const string configFilename = "LoginInfoPath.txt";
+        public static bool debug;
+        
+        public static string oaUsername;
+        public static string oaPassword;
 
-        public static bool GetLoginInfo(out string username, out string password)
+        public static readonly string exePath;
+
+        static ConfigData()
         {
-            username = null;
-            password = null;
-
-            if (!File.Exists(configFilename))
-            {
-                Console.WriteLine($"File {configFilename} missing.");
-                return false;
-            }
-
-            var LoginInfopath = File.ReadAllLines(configFilename)[0];
-
-            if (!File.Exists(LoginInfopath))
-            {
-                Console.WriteLine($"File {LoginInfopath} missing.");
-                return false;
-            }
-
-            var loginInfo = File.ReadAllLines(LoginInfopath);
-            username = loginInfo[0];
-            password = loginInfo[1];
-            return true;
+            exePath = AppDomain.CurrentDomain.BaseDirectory + "/";
         }
 
-        const string userInfoPath = "InternalUserInfo.txt";
+        static string userInfoPath => exePath + "InternalUserInfo.txt";
 
         public static bool IsInternalUserInfoExist()
         {
@@ -78,7 +59,7 @@ namespace OrderMeal
             var has2 = configList.TryGetValue("orderUname", out orderUname);
             return has1 && has2;
         }
-        
+
         public static bool GetInternalUserInfoFromServer(out string orderUid, out string orderUname)
         {
             orderUid = null;

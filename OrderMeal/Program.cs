@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace OrderMeal
 {
@@ -6,52 +7,103 @@ namespace OrderMeal
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("------------------------ App begin----------------------");
+            Console.WriteLine("App startup.");
+            Console.WriteLine();
+
+            var newArgs = ArgsFilter(args);
+
+            if (newArgs.Count < 2)
+            {
+                Console.WriteLine("Usage:");
+                Console.WriteLine("    OrderMeal [Options] <username> <password>");
+                Console.WriteLine();
+                Console.WriteLine("    Options:");
+                Console.WriteLine("        -d --debug: Enable debug mode");
+                Console.WriteLine();
+                return;
+            }
+
+            ConfigData.oaUsername = newArgs[0];
+            ConfigData.oaPassword = newArgs[1];
+
+            Console.WriteLine("Ordering begin.");
 
             InitRequest();
 
-            Login();
+            if (Login())
+            {
+                Order();
+            }
 
-            Order();
-
-            Console.WriteLine("------------------------ App end------------------------");
+            Console.WriteLine();
+            Console.WriteLine("Ordering end.");
 
             Console.ReadLine();
         }
 
+        static List<string> ArgsFilter(string[] args)
+        {
+            List<string> newArgs = new List<string>(args);
+
+            for (int i = newArgs.Count - 1; i >= 0; i--)
+            {
+                var arg = newArgs[i];
+                if (arg.Contains("-") || arg.Contains("--"))
+                {
+                    newArgs.RemoveAt(i);
+                    if (arg.Equals("-d") || arg.Equals("--debug"))
+                        ConfigData.debug = true;
+                }
+            }
+
+            // Console.WriteLine($"Parameters:");
+            // foreach (var arg in newArgs)
+            // {
+            //     Console.WriteLine($"    {arg}");
+            // }
+            //
+            // Console.WriteLine();
+
+            return newArgs;
+        }
+
         static void InitRequest()
         {
-            Console.WriteLine("------------------------------------");
+            Console.WriteLine();
 
             var httpCode = ServerAPI.GetToken(out var token);
 
-            Console.WriteLine($"GetToken {httpCode}, {token}");
+            Console.WriteLine($"GetToken, {httpCode}, {token}");
         }
 
-        static void Login()
+        static bool Login()
         {
-            Console.WriteLine("------------------------------------");
+            Console.WriteLine();
 
-            ConfigData.GetLoginInfo(out var username, out var password);
+            var httpCode2 = ServerAPI.RequestLogin(ConfigData.oaUsername, ConfigData.oaPassword, out var loginRet);
 
-            var httpCode2 = ServerAPI.RequestLogin(username, password, out var loginRet);
+            Console.WriteLine($"login as {ConfigData.oaUsername}, {httpCode2}");
 
-            Console.WriteLine($"login as {username}, {httpCode2}");
+            if (ConfigData.debug)
+                Console.WriteLine($"Login detail: {loginRet}");
 
             // 判断登录失败
-            if (loginRet.Contains("<script>top.location.href='http://oa.gyyx.cn/signin/'</script>"))
+            if (loginRet.Contains("<script>top.location.href='http://oa.gyyx.cn/signin/'</script>") || loginRet.Contains("/Script/js/sign.js"))
             {
                 Console.WriteLine("login failed");
+                return false;
             }
             else
             {
                 Console.WriteLine("login succeed");
             }
+
+            return true;
         }
 
         static void Order()
         {
-            Console.WriteLine("------------------------------------");
+            Console.WriteLine();
 
             var userInfoExist = ConfigData.GetInternalUserInfoFromServer(out var orderUid, out var orderUname);
             if (!userInfoExist)
@@ -61,16 +113,23 @@ namespace OrderMeal
             }
 
             var httpCode3 = ServerAPI.RequestOrderMeal(orderUid, orderUname, out var orderRet);
-            Console.WriteLine($"order {httpCode3}");
+            Console.WriteLine($"order, {httpCode3}");
 
-            Console.WriteLine($"Order detail: {orderRet}");
+            if (ConfigData.debug)
+                Console.WriteLine($"Order detail: {orderRet}");
 
-            var data = Convert.ToInt32(orderRet);
-            if (data == 1)
+            var orderReqSucceed = int.TryParse(orderRet, out var retData);
+            if (!orderReqSucceed)
+            {
+                Console.WriteLine("订餐请求失败!");
+                return;
+            }
+
+            if (retData == 1)
             {
                 Console.WriteLine("订餐成功！");
             }
-            else if (data == 3)
+            else if (retData == 3)
             {
                 Console.WriteLine("订餐异常！");
             }

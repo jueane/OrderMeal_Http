@@ -22,13 +22,15 @@ namespace OrderMealTest.Test
         [Test]
         public void TestConfigExist()
         {
-            var p = ConfigData.configFilename;
-            var fileExist = File.Exists(p);
-            Assert.IsTrue(fileExist, $"配置文件{p}丢失");
-
-            var path = File.ReadAllLines(p)[0];
-            Debug.WriteLine($"Login info path is {path}");
-            Assert.IsTrue(File.Exists(path), $"登录信息文件{path}不存在");
+            // var p = ConfigData.configFilename;
+            // var fileExist = File.Exists(p);
+            // Assert.IsTrue(fileExist, $"配置文件{p}丢失");
+            //
+            // var path = File.ReadAllLines(p)[0];
+            // Debug.WriteLine($"Login info path is {path}");
+            // Assert.IsTrue(File.Exists(path), $"登录信息文件{path}不存在");
+            Assert.IsNotNull(ConfigData.oaUsername);
+            Assert.IsNotNull(ConfigData.oaPassword);
         }
 
         [Test]
@@ -52,6 +54,5 @@ namespace OrderMealTest.Test
         {
             Assert.Pass();
         }
-
     }
 }
