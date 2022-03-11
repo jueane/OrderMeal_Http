@@ -45,3 +45,9 @@ jobs:
     #  run: dotnet test --no-build --verbosity normal
     - name: Publish
       run: dotnet publish
+      
+    - name: Upload OrderMeal Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: OrderMeal
+        path:  D:\a\OrderMeal_Http\OrderMeal_Http\OrderMeal\bin\Debug\net5.0\publish\
