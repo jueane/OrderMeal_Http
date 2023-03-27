@@ -1,70 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
+using CommandLine;
 
 namespace OrderMeal
 {
     class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            Console.WriteLine("App startup.");
-            Console.WriteLine();
-
-            var newArgs = ArgsFilter(args);
-
-            if (newArgs.Count < 2)
+            Parser.Default.ParseArguments<Options>(args).WithParsed(options =>
             {
-                Console.WriteLine("Usage:");
-                Console.WriteLine("    OrderMeal [Options] <username> <password>");
-                Console.WriteLine();
-                Console.WriteLine("    Options:");
-                Console.WriteLine("        -d --debug: Enable debug mode");
-                Console.WriteLine();
-                return;
-            }
+                ConfigData.debug = options.isDebug;
+                ConfigData.oaUsername = options.username;
+                ConfigData.oaPassword = options.password;
 
-            ConfigData.oaUsername = newArgs[0];
-            ConfigData.oaPassword = newArgs[1];
 
-            Console.WriteLine("Ordering begin.");
+                Console.WriteLine("Ordering begin.");
 
-            InitRequest();
+                InitRequest();
 
-            if (Login())
-            {
-                Order();
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Ordering end.");
-
-            Console.ReadLine();
-        }
-
-        static List<string> ArgsFilter(string[] args)
-        {
-            List<string> newArgs = new List<string>(args);
-
-            for (int i = newArgs.Count - 1; i >= 0; i--)
-            {
-                var arg = newArgs[i];
-                if (arg.Contains("-") || arg.Contains("--"))
+                if (Login())
                 {
-                    newArgs.RemoveAt(i);
-                    if (arg.Equals("-d") || arg.Equals("--debug"))
-                        ConfigData.debug = true;
+                    Order();
                 }
-            }
 
-            // Console.WriteLine($"Parameters:");
-            // foreach (var arg in newArgs)
-            // {
-            //     Console.WriteLine($"    {arg}");
-            // }
-            //
-            // Console.WriteLine();
+                Console.WriteLine();
+                Console.WriteLine("Ordering end.");
 
-            return newArgs;
+                Console.ReadLine();
+            }).WithNotParsed(errors => { });
         }
 
         static void InitRequest()
