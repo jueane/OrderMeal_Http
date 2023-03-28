@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 using CommandLine;
 
 namespace OrderMeal
@@ -17,42 +17,44 @@ namespace OrderMeal
 
                 Console.WriteLine("Ordering begin.");
 
-                InitRequest();
+                InitRequest().Wait();
 
-                if (Login())
+                if (Login().Result)
                 {
-                    Order();
+                    if (!Order().Wait(10000))
+                    {
+                        Console.WriteLine("Order timeout");
+                    }
                 }
 
                 Console.WriteLine();
                 Console.WriteLine("Ordering end.");
-
-                Console.ReadLine();
             }).WithNotParsed(errors => { });
         }
 
-        static void InitRequest()
+        static async Task<string> InitRequest()
         {
             Console.WriteLine();
 
-            var httpCode = ServerAPI.GetToken(out var token);
+            var httpRespData = await ServerAPI.GetToken();
 
-            Console.WriteLine($"GetToken, {httpCode}, {token}");
+            Console.WriteLine($"GetToken, {httpRespData.respData}");
+            return httpRespData.respData;
         }
 
-        static bool Login()
+        static async Task<bool> Login()
         {
             Console.WriteLine();
 
-            var httpCode2 = ServerAPI.RequestLogin(ConfigData.oaUsername, ConfigData.oaPassword, out var loginRet);
+            var httpRet = await ServerAPI.RequestLogin(ConfigData.oaUsername, ConfigData.oaPassword);
 
-            Console.WriteLine($"login as {ConfigData.oaUsername}, {httpCode2}");
+            Console.WriteLine($"login as {ConfigData.oaUsername}, {httpRet.httpCode}");
 
             if (ConfigData.debug)
-                Console.WriteLine($"Login detail: {loginRet}");
+                Console.WriteLine($"Login detail: {httpRet.respData}");
 
             // 判断登录失败
-            if (loginRet.Contains("<script>top.location.href='http://oa.gyyx.cn/signin/'</script>") || loginRet.Contains("/Script/js/sign.js"))
+            if (httpRet.respData.Contains("<script>top.location.href='http://oa.gyyx.cn/signin/'</script>") || httpRet.respData.Contains("/Script/js/sign.js"))
             {
                 Console.WriteLine("login failed");
                 return false;
@@ -65,24 +67,24 @@ namespace OrderMeal
             return true;
         }
 
-        static void Order()
+        static async Task Order()
         {
             Console.WriteLine();
 
-            var userInfoExist = ConfigData.GetInternalUserInfoFromServer(out var orderUid, out var orderUname);
-            if (!userInfoExist)
+            var userInfo = await ConfigData.GetInternalUserInfoFromServer();
+            if (!userInfo.succeed)
             {
                 Console.WriteLine("Parse ordering info failed.");
                 return;
             }
 
-            var httpCode3 = ServerAPI.RequestOrderMeal(orderUid, orderUname, out var orderRet);
-            Console.WriteLine($"order, {httpCode3}");
+            var httpRespData = await ServerAPI.RequestOrderMeal(userInfo.orderUid, userInfo.orderUname);
+            Console.WriteLine($"order, {httpRespData.httpCode}");
 
             if (ConfigData.debug)
-                Console.WriteLine($"Order detail: {orderRet}");
+                Console.WriteLine($"Order detail: {httpRespData.respData}");
 
-            var orderReqSucceed = int.TryParse(orderRet, out var retData);
+            var orderReqSucceed = int.TryParse(httpRespData.respData, out var retData);
             if (!orderReqSucceed)
             {
                 Console.WriteLine("订餐请求失败!");

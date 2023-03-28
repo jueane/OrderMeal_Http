@@ -2,10 +2,17 @@
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace OrderMeal
 {
+    public class HttpRespData
+    {
+        public HttpStatusCode httpCode;
+        public string respData;
+    }
+
     public class ServerAPI
     {
         public static bool realRequest = true;
@@ -17,43 +24,56 @@ namespace OrderMeal
 
         public static string __RequestVerificationToken;
 
-        public static HttpStatusCode RequestLoginPage(out string returnString)
+        public static async Task<HttpRespData> RequestLoginPage()
         {
             if (!realRequest)
             {
-                returnString = null;
-                return HttpStatusCode.OK;
+                return new HttpRespData()
+                {
+                    httpCode = HttpStatusCode.OK,
+                };
             }
 
             const string url = "http://oa.gyyx.cn/Signin";
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, url);
-            var resp = httpClient.Send(req);
-            var respTask = resp.Content.ReadAsStringAsync();
-            respTask.Wait();
-            returnString = respTask.Result;
-            return resp.StatusCode;
+            var httpResp = await httpClient.SendAsync(req);
+            var respHttpData = await httpResp.Content.ReadAsStringAsync();
+
+            return new HttpRespData()
+            {
+                respData = respHttpData,
+                httpCode = httpResp.StatusCode
+            };
         }
 
-        public static HttpStatusCode GetToken(out string tokenString)
+        public static async Task<HttpRespData> GetToken()
         {
-            tokenString = null;
-            var retCode = RequestLoginPage(out var respText);
-            if (retCode != HttpStatusCode.OK)
+            var resp = await RequestLoginPage();
+            if (resp.httpCode != HttpStatusCode.OK)
             {
-                return retCode;
+                return new HttpRespData()
+                {
+                    httpCode = resp.httpCode
+                };
             }
 
-            ServerAPI.__RequestVerificationToken = HtmlPageParser.FindToken(respText);
-
-            return HttpStatusCode.OK;
+            // var respResult = await resp.Content.ReadAsStringAsync();
+            ServerAPI.__RequestVerificationToken = HtmlPageParser.FindToken(resp.respData);
+            return new HttpRespData()
+            {
+                httpCode = resp.httpCode,
+                respData = ServerAPI.__RequestVerificationToken
+            };
         }
 
-        public static HttpStatusCode RequestLogin(string Account, string Password, out string returnString)
+        public static async Task<HttpRespData> RequestLogin(string Account, string Password)
         {
             if (!realRequest)
             {
-                returnString = null;
-                return HttpStatusCode.OK;
+                return new HttpRespData()
+                {
+                    httpCode = HttpStatusCode.OK,
+                };
             }
 
             string url = "http://oa.gyyx.cn/Signin";
@@ -74,34 +94,40 @@ namespace OrderMeal
             // req.Headers.Add(nameof(Remeber), Remeber);
 
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, finalUrl);
-            var resp = httpClient.Send(req);
-            var respTask = resp.Content.ReadAsStringAsync();
-            respTask.Wait();
-            returnString = respTask.Result;
-            return resp.StatusCode;
+            var resp = await httpClient.SendAsync(req);
+            var respTask = await resp.Content.ReadAsStringAsync();
+            return new HttpRespData()
+            {
+                httpCode = resp.StatusCode,
+                respData = respTask
+            };
         }
 
-        public static HttpStatusCode RequestPreOrder(out string returnString)
+        public static async Task<HttpRespData> RequestPreOrder()
         {
             if (!realRequest)
             {
-                returnString = null;
-                return HttpStatusCode.OK;
+                return new HttpRespData()
+                {
+                    httpCode = HttpStatusCode.OK,
+                };
             }
 
             const string url = "http://order.oa.gyyx.cn/order/index.do";
 
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, url);
             //req.Headers.Add(nameof(__RequestVerificationToken), __RequestVerificationToken);
-            var resp = httpClient.Send(req);
-            var respTask = resp.Content.ReadAsStringAsync();
-            respTask.Wait();
-            returnString = respTask.Result;
+            var resp = await httpClient.SendAsync(req);
+            var respTask = await resp.Content.ReadAsStringAsync();
 
-            return resp.StatusCode;
+            return new HttpRespData()
+            {
+                httpCode = resp.StatusCode,
+                respData = respTask
+            };
         }
 
-        public static HttpStatusCode RequestOrderMeal(string orderUid, string orderUname, out string returnString)
+        public static async Task<HttpRespData> RequestOrderMeal(string orderUid, string orderUname)
         {
             const string url = "http://order.oa.gyyx.cn:80/order/orderOne.do";
 
@@ -112,11 +138,14 @@ namespace OrderMeal
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, url);
             req.Content = new StringContent(postBody, Encoding.UTF8, "application/x-www-form-urlencoded");
 
-            var resp = httpClient.Send(req);
-            var respTask = resp.Content.ReadAsStringAsync();
-            respTask.Wait();
-            returnString = respTask.Result;
-            return resp.StatusCode;
+            var resp = await httpClient.SendAsync(req);
+            var respTask = await resp.Content.ReadAsStringAsync();
+
+            return new HttpRespData()
+            {
+                httpCode = resp.StatusCode,
+                respData = respTask
+            };
         }
 
         // 验证结果

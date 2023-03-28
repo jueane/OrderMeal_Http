@@ -1,13 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading.Tasks;
+using OrderMeal.DataStruct;
 
 namespace OrderMeal
 {
-    public class ConfigData
+    public static class ConfigData
     {
         public static bool debug;
-        
+
         public static string oaUsername;
         public static string oaPassword;
 
@@ -26,14 +28,14 @@ namespace OrderMeal
         }
 
         // 从page中解析并保存。
-        public static bool InitInternalUserInfo()
+        public static async Task<bool> InitInternalUserInfo()
         {
-            var httpCode = ServerAPI.RequestPreOrder(out var respHtml);
-            if (httpCode != HttpStatusCode.OK)
+            var httpResp = await ServerAPI.RequestPreOrder();
+            if (httpResp.httpCode != HttpStatusCode.OK)
                 return false;
 
-            var uid = HtmlPageParser.FindUid(respHtml);
-            var uname = HtmlPageParser.FindUName(respHtml);
+            var uid = HtmlPageParser.FindUid(httpResp.respData);
+            var uname = HtmlPageParser.FindUName(httpResp.respData);
 
             var uInfo = new string[] { $"orderUid={uid}", $"orderUname={uname}" };
 
@@ -41,38 +43,29 @@ namespace OrderMeal
             return true;
         }
 
-        public static bool GetInternalUserInfo(out string orderUid, out string orderUname)
+        public static async Task<UserInfo> GetInternalUserInfoFromServer()
         {
-            orderUid = null;
-            orderUname = null;
+            string orderUid = null;
+            string orderUname = null;
 
-            if (!File.Exists(userInfoPath))
+            var httpRespData = await ServerAPI.RequestPreOrder();
+            if (httpRespData.httpCode != HttpStatusCode.OK)
             {
-                Console.WriteLine($"File {userInfoPath} missing.");
-                InitInternalUserInfo();
-                GetInternalUserInfo(out orderUid, out orderUname);
-                return true;
+                return new UserInfo()
+                {
+                    succeed = false
+                };
             }
 
-            var configList = ConfigFileUtil.LoadConfigFile(userInfoPath);
-            var has1 = configList.TryGetValue("orderUid", out orderUid);
-            var has2 = configList.TryGetValue("orderUname", out orderUname);
-            return has1 && has2;
-        }
+            orderUid = HtmlPageParser.FindUid(httpRespData.respData);
+            orderUname = HtmlPageParser.FindUName(httpRespData.respData);
 
-        public static bool GetInternalUserInfoFromServer(out string orderUid, out string orderUname)
-        {
-            orderUid = null;
-            orderUname = null;
-
-            var httpCode = ServerAPI.RequestPreOrder(out var respHtml);
-            if (httpCode != HttpStatusCode.OK)
-                return false;
-
-            orderUid = HtmlPageParser.FindUid(respHtml);
-            orderUname = HtmlPageParser.FindUName(respHtml);
-
-            return true;
+            return new UserInfo()
+            {
+                succeed = true,
+                orderUid = orderUid,
+                orderUname = orderUname
+            };
         }
     }
 }
