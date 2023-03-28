@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using CommandLine;
+using OrderMeal.DataStruct;
 
 namespace OrderMeal
 {
@@ -14,21 +15,25 @@ namespace OrderMeal
                 ConfigData.oaUsername = options.username;
                 ConfigData.oaPassword = options.password;
 
-
                 Console.WriteLine("Ordering begin.");
 
-                InitRequest().Wait();
-
-                if (Login().Result)
+                InitRequest().ContinueWith(initTask =>
                 {
-                    if (!Order().Wait(10000))
+                    Login().ContinueWith(loginTask =>
                     {
-                        Console.WriteLine("Order timeout");
-                    }
-                }
+                        if (loginTask.Result)
+                        {
+                            Console.WriteLine("login succeed");
+                            Order().ContinueWith(orderTask => { Console.WriteLine(orderTask.Result.msg); });
+                        }
+                        else
+                        {
+                            Console.WriteLine("login failed");
+                        }
+                    });
+                });
 
-                Console.WriteLine();
-                Console.WriteLine("Ordering end.");
+                Console.ReadLine();
             }).WithNotParsed(errors => { });
         }
 
@@ -56,26 +61,24 @@ namespace OrderMeal
             // 判断登录失败
             if (httpRet.respData.Contains("<script>top.location.href='http://oa.gyyx.cn/signin/'</script>") || httpRet.respData.Contains("/Script/js/sign.js"))
             {
-                Console.WriteLine("login failed");
                 return false;
-            }
-            else
-            {
-                Console.WriteLine("login succeed");
             }
 
             return true;
         }
 
-        static async Task Order()
+        static async Task<OrderResultInfo> Order()
         {
+            var resultInfo = new OrderResultInfo();
+
             Console.WriteLine();
 
             var userInfo = await ConfigData.GetInternalUserInfoFromServer();
             if (!userInfo.succeed)
             {
-                Console.WriteLine("Parse ordering info failed.");
-                return;
+                resultInfo.succeed = false;
+                resultInfo.msg = "Parse ordering info failed.";
+                return resultInfo;
             }
 
             var httpRespData = await ServerAPI.RequestOrderMeal(userInfo.orderUid, userInfo.orderUname);
@@ -87,21 +90,24 @@ namespace OrderMeal
             var orderReqSucceed = int.TryParse(httpRespData.respData, out var retData);
             if (!orderReqSucceed)
             {
-                Console.WriteLine("订餐请求失败!");
-                return;
+                resultInfo.succeed = false;
+                resultInfo.msg = "订餐请求失败!";
+                return resultInfo;
             }
+
+            resultInfo.retCode = retData;
 
             if (retData == 1)
             {
-                Console.WriteLine("订餐成功！");
-            }
-            else if (retData == 3)
-            {
-                Console.WriteLine("订餐异常！");
+                resultInfo.succeed = true;
+                resultInfo.msg = "订餐成功！";
+                return resultInfo;
             }
             else
             {
-                Console.WriteLine("订餐失败!");
+                resultInfo.succeed = false;
+                resultInfo.msg = "订餐失败！";
+                return resultInfo;
             }
         }
     }
