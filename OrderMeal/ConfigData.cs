@@ -15,16 +15,11 @@ namespace OrderMeal
 
         public static readonly string exePath;
 
+        static string userInfoPath => exePath + "InternalUserInfo.txt";
+
         static ConfigData()
         {
             exePath = AppDomain.CurrentDomain.BaseDirectory + "/";
-        }
-
-        static string userInfoPath => exePath + "InternalUserInfo.txt";
-
-        public static bool IsInternalUserInfoExist()
-        {
-            return File.Exists(userInfoPath);
         }
 
         // 从page中解析并保存。

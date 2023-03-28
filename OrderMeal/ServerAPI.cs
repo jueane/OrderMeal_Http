@@ -7,13 +7,7 @@ using System.Web;
 
 namespace OrderMeal
 {
-    public class HttpRespData
-    {
-        public HttpStatusCode httpCode;
-        public string respData;
-    }
-
-    public class ServerAPI
+    public static class ServerAPI
     {
         public static bool realRequest = true;
 
